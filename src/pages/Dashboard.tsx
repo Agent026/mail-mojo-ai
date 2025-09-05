@@ -16,6 +16,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { analyzeEmail, generateResponse } from '@/services/openaiService';
 
 const Dashboard = () => {
   const [emails] = useState<Email[]>(mockEmails);
@@ -24,81 +25,63 @@ const Dashboard = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Mock AI analysis function
+  // AI analysis function using OpenAI
   const handleAnalyzeEmail = useCallback(async () => {
     if (!selectedEmail) return;
     
     setIsAnalyzing(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock analysis based on email content
-    const mockAnalysis = {
-      sentiment: selectedEmail.body.toLowerCase().includes('urgent') || selectedEmail.body.toLowerCase().includes('down') 
-        ? 'negative' as const
-        : selectedEmail.body.toLowerCase().includes('great') || selectedEmail.body.toLowerCase().includes('enjoy')
-        ? 'positive' as const 
-        : 'neutral' as const,
-      priority: selectedEmail.subject.toLowerCase().includes('urgent') 
-        ? 'urgent' as const
-        : selectedEmail.subject.toLowerCase().includes('help') || selectedEmail.subject.toLowerCase().includes('support')
-        ? 'high' as const
-        : 'medium' as const,
-      summary: `This email requires ${selectedEmail.subject.toLowerCase().includes('urgent') ? 'immediate' : 'timely'} attention regarding ${selectedEmail.subject.toLowerCase()}.`,
-      keywords: ['support', 'assistance', 'inquiry']
-    };
-    
-    // Update the selected email with analysis
-    const updatedEmail = { ...selectedEmail, analysis: mockAnalysis };
-    setSelectedEmail(updatedEmail);
-    
-    setIsAnalyzing(false);
-    toast({
-      title: "Analysis Complete",
-      description: "AI has analyzed the email and identified key insights.",
-    });
+    try {
+      const analysis = await analyzeEmail(selectedEmail.subject, selectedEmail.body);
+      
+      // Update the selected email with analysis
+      const updatedEmail = { ...selectedEmail, analysis };
+      setSelectedEmail(updatedEmail);
+      
+      toast({
+        title: "Analysis Complete",
+        description: "AI has analyzed the email and identified key insights.",
+      });
+    } catch (error) {
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to analyze email. Please check your API key and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   }, [selectedEmail]);
 
-  // Mock response generation function
+  // AI response generation function using OpenAI
   const handleGenerateResponse = useCallback(async () => {
     if (!selectedEmail || !selectedEmail.analysis) return;
     
     setIsGenerating(true);
     
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock response based on analysis
-    let mockResponse = '';
-    if (selectedEmail.analysis.priority === 'urgent') {
-      mockResponse = `Dear ${selectedEmail.sender.split('@')[0]},
-
-Thank you for bringing this urgent matter to our attention. We understand the critical nature of this issue and our technical team is actively working on a resolution.
-
-We have escalated this to our highest priority and will provide updates every 30 minutes until resolved.
-
-Best regards,
-Support Team`;
-    } else {
-      mockResponse = `Dear ${selectedEmail.sender.split('@')[0]},
-
-Thank you for reaching out to us. We have received your ${selectedEmail.analysis.priority} priority request and our team will address this promptly.
-
-We appreciate your patience and will get back to you within 24 hours with a detailed response.
-
-Best regards,
-Support Team`;
+    try {
+      const response = await generateResponse(
+        selectedEmail.subject, 
+        selectedEmail.body, 
+        selectedEmail.analysis
+      );
+      
+      const updatedEmail = { ...selectedEmail, draftResponse: response };
+      setSelectedEmail(updatedEmail);
+      
+      toast({
+        title: "Response Generated",
+        description: "AI has created a draft response ready for review.",
+      });
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Unable to generate response. Please check your API key and try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGenerating(false);
     }
-    
-    const updatedEmail = { ...selectedEmail, draftResponse: mockResponse };
-    setSelectedEmail(updatedEmail);
-    
-    setIsGenerating(false);
-    toast({
-      title: "Response Generated",
-      description: "AI has created a draft response ready for review.",
-    });
   }, [selectedEmail]);
 
   const handleEmailSelect = (email: Email) => {
