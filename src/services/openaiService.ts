@@ -1,4 +1,4 @@
-const OPENAI_API_KEY = 'YOUR_API_KEY_HERE'; // Replace with your actual API key
+const OPENAI_API_KEY = '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';
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export interface EmailAnalysis {
